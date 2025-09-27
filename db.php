@@ -4,16 +4,39 @@
  * Uses PDO with proper error handling and security settings
  */
 
+// Load environment variables
+if (file_exists(__DIR__ . '/.env')) {
+    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '#') === 0) continue; // Skip comments
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+        }
+    }
+}
+
 // Database configuration
-define('DB_HOST', getenv('DB_HOST') ?: 'mariadb');
-define('DB_NAME', getenv('DB_NAME') ?: 'login_system');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: 'rootpassword');
+define('DB_HOST', $_ENV['DB_HOST'] ?? 'mariadb');
+define('DB_NAME', $_ENV['DB_NAME'] ?? 'login_system');
+define('DB_USER', $_ENV['DB_USER'] ?? 'app_user');
+define('DB_PASS', $_ENV['DB_PASS'] ?? 'app_password');
 define('DB_CHARSET', 'utf8mb4');
 
 // Session configuration
-define('SESSION_TIMEOUT', 30 * 60); // 30 minutes in seconds
-define('SESSION_COOKIE_NAME', 'login_session');
+define('SESSION_TIMEOUT', (int)($_ENV['SESSION_TIMEOUT'] ?? 1800)); // 30 minutes
+define('SESSION_COOKIE_NAME', $_ENV['SESSION_COOKIE_NAME'] ?? 'cms_auth_session');
+
+// Stripe configuration
+define('STRIPE_PUBLISHABLE_KEY', $_ENV['STRIPE_PUBLISHABLE_KEY'] ?? '');
+define('STRIPE_SECRET_KEY', $_ENV['STRIPE_SECRET_KEY'] ?? '');
+define('STRIPE_WEBHOOK_SECRET', $_ENV['STRIPE_WEBHOOK_SECRET'] ?? '');
+define('STRIPE_MODE', $_ENV['STRIPE_MODE'] ?? 'test');
+
+// Application configuration
+define('APP_URL', $_ENV['APP_URL'] ?? 'http://localhost:8083');
+define('APP_NAME', $_ENV['APP_NAME'] ?? 'CMS Auth System');
+define('APP_ENV', $_ENV['APP_ENV'] ?? 'development');
 
 /**
  * Get database connection using PDO

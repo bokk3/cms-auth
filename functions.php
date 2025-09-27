@@ -284,6 +284,40 @@ function hasRole(string $role): bool {
 }
 
 /**
+ * Check if user has any of the specified roles
+ * 
+ * @param array $roles Array of acceptable roles
+ * @return bool True if user has any of the roles
+ */
+function hasAnyRole(array $roles): bool {
+    return isset($_SESSION['role']) && in_array($_SESSION['role'], $roles, true);
+}
+
+/**
+ * Check if user has minimum role level
+ * Role hierarchy: user < editor < admin
+ * 
+ * @param string $minimumRole Minimum required role
+ * @return bool True if user meets minimum role requirement
+ */
+function hasMinimumRole(string $minimumRole): bool {
+    if (!isset($_SESSION['role'])) {
+        return false;
+    }
+    
+    $roleHierarchy = [
+        'user' => 1,
+        'editor' => 2,
+        'admin' => 3
+    ];
+    
+    $userLevel = $roleHierarchy[$_SESSION['role']] ?? 0;
+    $requiredLevel = $roleHierarchy[$minimumRole] ?? 999;
+    
+    return $userLevel >= $requiredLevel;
+}
+
+/**
  * Require specific role or redirect
  * 
  * @param string $role Required role
@@ -291,7 +325,36 @@ function hasRole(string $role): bool {
  */
 function requireRole(string $role, string $redirectTo = 'admin.php'): void {
     if (!hasRole($role)) {
-        setFlashMessage('Access denied. Insufficient privileges.', 'error');
+        setFlashMessage('Access denied. You need ' . $role . ' role to access this area.', 'error');
+        header("Location: {$redirectTo}");
+        exit;
+    }
+}
+
+/**
+ * Require any of the specified roles or redirect
+ * 
+ * @param array $roles Array of acceptable roles
+ * @param string $redirectTo Redirect URL if access denied
+ */
+function requireAnyRole(array $roles, string $redirectTo = 'admin.php'): void {
+    if (!hasAnyRole($roles)) {
+        $roleList = implode(' or ', $roles);
+        setFlashMessage("Access denied. You need {$roleList} role to access this area.", 'error');
+        header("Location: {$redirectTo}");
+        exit;
+    }
+}
+
+/**
+ * Require minimum role level or redirect
+ * 
+ * @param string $minimumRole Minimum required role
+ * @param string $redirectTo Redirect URL if access denied
+ */
+function requireMinimumRole(string $minimumRole, string $redirectTo = 'admin.php'): void {
+    if (!hasMinimumRole($minimumRole)) {
+        setFlashMessage("Access denied. You need at least {$minimumRole} role to access this area.", 'error');
         header("Location: {$redirectTo}");
         exit;
     }

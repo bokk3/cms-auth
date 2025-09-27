@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # MariaDB Database
+  mariadb:
+    image: mariadb:11.1
+    container_name: cms-auth-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_DATABASE: login_system
+      MARIADB_USER: app_user
+      MARIADB_PASSWORD: app_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "3308:3306"  # Different port to avoid conflicts
+    networks:
+      - cms-auth-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PHP with Apache Web Server
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms-auth-web
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb
+      DB_NAME: login_system
+      DB_USER: app_user
+      DB_PASS: app_password
+    volumes:
+      - .:/var/www/html:ro
+      - apache_logs:/var/log/apache2
+    ports:
+      - "8083:80"   # Different port for web access
+    networks:
+      - cms-auth-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/login.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PHPMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2
+    container_name: cms-auth-pma
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "8084:80"   # PHPMyAdmin access
+    networks:
+      - cms-auth-network
+
+  # Redis for session storage (optional but recommended for production)
+  redis:
+    image: redis:7.2-alpine
+    container_name: cms-auth-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6380:6379"  # Different Redis port
+    networks:
+      - cms-auth-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local
+  apache_logs:
+    driver: local
+
+networks:
+  cms-auth-network:
+    driver: bridge

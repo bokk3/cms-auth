@@ -1,16 +1,17 @@
 # 🔐 CMS Authentication System
 
-A robust, secure PHP authentication system extracted from LoveConnect dating app.
+A robust, secure PHP authentication system with role-based access control.
 
 ## ✨ Features
 
 - **🔒 Secure Authentication**: Argon2ID password hashing
 - **🛡️ CSRF Protection**: Built-in token validation  
 - **⚡ Session Management**: Secure session handling with timeout
-- **📱 Responsive Design**: Mobile-first CSS framework
+- **� Role-Based Access**: Admin, Editor, and User roles with different permissions
+- **�📱 Responsive Design**: Mobile-first CSS framework
 - **🌙 Theme Toggle**: Dark/Light mode support
-- **🔄 Password Reset**: Email-based password recovery
-- **📊 User Management**: Complete user lifecycle
+- **🔄 Password Reset**: Email-based password recovery framework
+- **📊 User Management**: Complete user lifecycle with admin interface
 
 ## 🚀 Quick Start
 
@@ -36,13 +37,16 @@ A robust, secure PHP authentication system extracted from LoveConnect dating app
 ## 📁 Core Files
 
 - `db.php` - Database connection & configuration
-- `functions.php` - Core authentication functions
+- `functions.php` - Core authentication functions with role management
+- `admin.php` - Role-based dashboard system
 - `login.php` - Login page with validation
 - `register.php` - User registration 
 - `logout.php` - Secure logout handling
-- `password_reset.php` - Password recovery
+- `password_reset.php` - Password recovery framework
+- `admin-only.php` - Admin-restricted area example
+- `editor-area.php` - Editor+ restricted area example
 - `assets/` - CSS framework & JavaScript
-- `schema.sql` - Database structure
+- `schema.sql` - Database structure with role system
 
 ## 🔧 Security Features
 
@@ -52,7 +56,8 @@ A robust, secure PHP authentication system extracted from LoveConnect dating app
 - ✅ XSS protection (input sanitization)
 - ✅ Secure session management
 - ✅ Password complexity validation
-- ✅ Rate limiting ready
+- ✅ Role-based access control
+- ✅ Rate limiting framework
 
 ## 💡 Usage Example
 
@@ -64,13 +69,34 @@ require_once 'db.php';
 // Start secure session
 startSecureSession();
 
-// Check if user is logged in
-if (isLoggedIn()) {
-    echo "Welcome " . $_SESSION['username'];
+// Check if user is logged in and has required role
+requireMinimumRole('editor'); // Allows editors and admins
+
+if (hasRole('admin')) {
+    echo "Welcome Admin: " . $_SESSION['username'];
 } else {
-    header('Location: login.php');
+    echo "Welcome " . $_SESSION['role'] . ": " . $_SESSION['username'];
 }
 ```
+
+## 👥 Role System
+
+### Admin Role
+- Full system access
+- User management
+- System settings
+- Security dashboard
+
+### Editor Role  
+- Content management
+- User profile moderation
+- Content reports
+- Cannot access admin areas
+
+### User Role
+- Profile management
+- Basic app features
+- Cannot access admin or editor areas
 
 ## 🎨 Styling
 

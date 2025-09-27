@@ -1,0 +1,15 @@
+# Docker ignore file for CMS Auth system
+.git
+.gitignore
+*.md
+README.md
+ROLE_IMPLEMENTATION_GUIDE.md
+.env.example
+docker-compose.override.yml
+.vscode
+.idea
+*.log
+node_modules
+vendor
+composer.lock
+package-lock.json

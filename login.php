@@ -58,7 +58,7 @@ function processLogin(): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Login - LoveConnect</title>
+    <title>CMS Authentication System</title>
     <link rel="stylesheet" href="assets/style.css">
     <style>
         .simple-login-page {
@@ -113,8 +113,8 @@ function processLogin(): string {
     
     <div class="simple-login-container">
         <div class="simple-login-header">
-            <h1>💕 LoveConnect</h1>
-            <p>Simple Login (No AJAX)</p>
+            <h1>� CMS Auth</h1>
+            <p>Secure Authentication System</p>
         </div>
         
         <?php if (!empty($error)): ?>
@@ -139,8 +139,20 @@ function processLogin(): string {
         
         <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 107, 122, 0.1); border-radius: 8px;">
             <p><strong>Demo Accounts:</strong></p>
-            <p>Username: <code>admin</code> / Password: <code>password123</code></p>
-            <p>Username: <code>alex_tech</code> / Password: <code>password123</code></p>
+            <div style="font-size: 0.9em; margin-top: 0.5rem;">
+                <div style="margin: 0.25rem 0;">
+                    <strong>Admin:</strong> <code>admin</code> / <code>admin123</code>
+                    <span style="color: #1976d2; font-size: 0.8em;">(Full system access)</span>
+                </div>
+                <div style="margin: 0.25rem 0;">
+                    <strong>Editor:</strong> <code>editor</code> / <code>editor123</code>
+                    <span style="color: #7b1fa2; font-size: 0.8em;">(Content management)</span>
+                </div>
+                <div style="margin: 0.25rem 0;">
+                    <strong>User:</strong> <code>alex_tech</code> / <code>editor123</code>
+                    <span style="color: #388e3c; font-size: 0.8em;">(Profile access only)</span>
+                </div>
+            </div>
         </div>
         
         <div style="text-align: center; margin-top: 1rem;">
