@@ -24,25 +24,6 @@ $activeTab = $_GET['tab'] ?? getDefaultTab($currentUser['role']);
 $content = generateRoleContent($currentUser, $activeTab);
 
 /**
- * Get current user details from session and database
- */
-function getCurrentUser(): ?array {
-    if (!isset($_SESSION['user_id'])) {
-        return null;
-    }
-    
-    try {
-        $pdo = getDbConnection();
-        $stmt = $pdo->prepare('SELECT id, username, email, role, created_at, last_active FROM users WHERE id = ?');
-        $stmt->execute([$_SESSION['user_id']]);
-        return $stmt->fetch();
-    } catch (Exception $e) {
-        error_log('Failed to get current user: ' . $e->getMessage());
-        return null;
-    }
-}
-
-/**
  * Get default tab based on user role
  */
 function getDefaultTab(string $role): string {
@@ -100,6 +81,16 @@ function generateAdminContent(array $user, string $activeTab): array {
                 'title' => 'Security & Sessions',
                 'body' => generateSecurityDashboard()
             ];
+        case 'payments':
+            return [
+                'title' => 'Payment Management',
+                'body' => generatePaymentManagement()
+            ];
+        case 'subscription':
+            return [
+                'title' => 'Subscription Management',
+                'body' => generateSubscriptionRedirect()
+            ];
         case 'settings':
             return [
                 'title' => 'System Settings',
@@ -133,6 +124,11 @@ function generateEditorContent(array $user, string $activeTab): array {
                 'title' => 'Content Reports',
                 'body' => generateContentReports()
             ];
+        case 'subscription':
+            return [
+                'title' => 'Subscription Management',
+                'body' => generateSubscriptionRedirect()
+            ];
         default:
             return [
                 'title' => 'Content Management',
@@ -156,6 +152,11 @@ function generateUserContent(array $user, string $activeTab): array {
                 'title' => 'My Content',
                 'body' => generateUserMatches($user)
             ];
+        case 'subscription':
+            return [
+                'title' => 'My Subscription',
+                'body' => generateSubscriptionRedirect()
+            ];
         case 'settings':
             return [
                 'title' => 'Account Settings',
@@ -167,6 +168,28 @@ function generateUserContent(array $user, string $activeTab): array {
                 'body' => generateUserProfile($user)
             ];
     }
+}
+
+/**
+ * Generate subscription redirect content
+ */
+function generateSubscriptionRedirect(): string {
+    return '
+        <div class="subscription-redirect" style="text-align: center; padding: 40px;">
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #333;">💳 Subscription Management</h3>
+                <p style="margin: 0 0 20px 0; color: #666;">Manage your subscription, billing, and payment methods.</p>
+                <a href="subscribe.php" class="btn btn-primary" style="
+                    display: inline-block;
+                    background: #007cba;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                ">View Subscription Plans</a>
+            </div>
+        </div>';
 }
 
 /**
@@ -345,6 +368,183 @@ function generateSystemSettings(): string {
     return "<div class='info-panel'><h3>System Settings</h3><p>System configuration options would be displayed here.</p></div>";
 }
 
+/**
+ * Generate payment management dashboard for admins
+ */
+function generatePaymentManagement(): string {
+    try {
+        require_once 'payment-functions.php';
+        $pdo = getDbConnection();
+        
+        // Get subscription statistics
+        $subStats = $pdo->query("
+            SELECT 
+                COUNT(*) as total_subscriptions,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_subscriptions,
+                COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_subscriptions,
+                COUNT(CASE WHEN status = 'past_due' THEN 1 END) as past_due_subscriptions
+            FROM user_subscriptions
+        ")->fetch();
+        
+        // Get revenue statistics
+        $revenueStats = $pdo->query("
+            SELECT 
+                COUNT(*) as total_transactions,
+                SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_revenue,
+                SUM(CASE WHEN status = 'completed' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN amount ELSE 0 END) as monthly_revenue,
+                COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_transactions
+            FROM payment_transactions
+        ")->fetch();
+        
+        // Get recent transactions
+        $recentTransactions = $pdo->query("
+            SELECT 
+                pt.id, pt.amount, pt.status, pt.transaction_type, pt.created_at,
+                u.username, u.email,
+                pp.name as plan_name
+            FROM payment_transactions pt
+            JOIN users u ON pt.user_id = u.id
+            LEFT JOIN payment_plans pp ON pt.plan_id = pp.id
+            ORDER BY pt.created_at DESC
+            LIMIT 10
+        ")->fetchAll();
+        
+        // Get active subscriptions
+        $activeSubscriptions = $pdo->query("
+            SELECT 
+                us.id, us.status, us.current_period_end, us.next_billing_date,
+                u.username, u.email,
+                pp.name as plan_name, pp.price
+            FROM user_subscriptions us
+            JOIN users u ON us.user_id = u.id
+            JOIN payment_plans pp ON us.plan_id = pp.id
+            WHERE us.status = 'active'
+            ORDER BY us.next_billing_date ASC
+            LIMIT 10
+        ")->fetchAll();
+        
+        $html = "
+        <style>
+            .payment-dashboard { display: grid; gap: 20px; }
+            .payment-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+            .payment-stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+            .payment-stat-number { font-size: 24px; font-weight: bold; color: #007cba; }
+            .payment-stat-label { color: #666; margin-top: 5px; }
+            .payment-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .payment-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .payment-table th, .payment-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+            .payment-table th { background: #f8f9fa; font-weight: bold; }
+            .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+            .status-active { background: #d4edda; color: #155724; }
+            .status-cancelled { background: #f8d7da; color: #721c24; }
+            .status-past_due { background: #fff3cd; color: #856404; }
+            .status-completed { background: #d1ecf1; color: #0c5460; }
+            .status-failed { background: #f8d7da; color: #721c24; }
+        </style>
+        
+        <div class='payment-dashboard'>
+            <div class='payment-stats'>
+                <div class='payment-stat-card'>
+                    <div class='payment-stat-number'>{$subStats['total_subscriptions']}</div>
+                    <div class='payment-stat-label'>Total Subscriptions</div>
+                </div>
+                <div class='payment-stat-card'>
+                    <div class='payment-stat-number'>{$subStats['active_subscriptions']}</div>
+                    <div class='payment-stat-label'>Active Subscriptions</div>
+                </div>
+                <div class='payment-stat-card'>
+                    <div class='payment-stat-number'>$" . number_format($revenueStats['total_revenue'] ?? 0, 2) . "</div>
+                    <div class='payment-stat-label'>Total Revenue</div>
+                </div>
+                <div class='payment-stat-card'>
+                    <div class='payment-stat-number'>$" . number_format($revenueStats['monthly_revenue'] ?? 0, 2) . "</div>
+                    <div class='payment-stat-label'>Monthly Revenue</div>
+                </div>
+                <div class='payment-stat-card'>
+                    <div class='payment-stat-number'>{$revenueStats['failed_transactions']}</div>
+                    <div class='payment-stat-label'>Failed Transactions</div>
+                </div>
+            </div>
+            
+            <div class='payment-section'>
+                <h3>Recent Transactions</h3>
+                <table class='payment-table'>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Plan</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>";
+                    
+        foreach ($recentTransactions as $transaction) {
+            $statusClass = 'status-' . str_replace(' ', '_', $transaction['status']);
+            $html .= "
+                        <tr>
+                            <td>
+                                <strong>" . htmlspecialchars($transaction['username']) . "</strong><br>
+                                <small>" . htmlspecialchars($transaction['email']) . "</small>
+                            </td>
+                            <td>" . htmlspecialchars($transaction['plan_name'] ?: '-') . "</td>
+                            <td>$" . number_format($transaction['amount'], 2) . "</td>
+                            <td>" . ucfirst(htmlspecialchars($transaction['transaction_type'])) . "</td>
+                            <td><span class='status-badge {$statusClass}'>" . htmlspecialchars($transaction['status']) . "</span></td>
+                            <td>" . date('M j, Y H:i', strtotime($transaction['created_at'])) . "</td>
+                        </tr>";
+        }
+        
+        $html .= "
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class='payment-section'>
+                <h3>Active Subscriptions</h3>
+                <table class='payment-table'>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Plan</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Next Billing</th>
+                        </tr>
+                    </thead>
+                    <tbody>";
+                    
+        foreach ($activeSubscriptions as $subscription) {
+            $statusClass = 'status-' . str_replace(' ', '_', $subscription['status']);
+            $html .= "
+                        <tr>
+                            <td>
+                                <strong>" . htmlspecialchars($subscription['username']) . "</strong><br>
+                                <small>" . htmlspecialchars($subscription['email']) . "</small>
+                            </td>
+                            <td>" . htmlspecialchars($subscription['plan_name']) . "</td>
+                            <td>$" . number_format($subscription['price'], 2) . "/month</td>
+                            <td><span class='status-badge {$statusClass}'>" . htmlspecialchars($subscription['status']) . "</span></td>
+                            <td>" . date('M j, Y', strtotime($subscription['next_billing_date'])) . "</td>
+                        </tr>";
+        }
+        
+        $html .= "
+                    </tbody>
+                </table>
+            </div>
+        </div>";
+        
+        return $html;
+        
+    } catch (Exception $e) {
+        error_log('Payment management dashboard error: ' . $e->getMessage());
+        return "<div class='error-panel'><h3>Payment Management</h3><p>Error loading payment data. Please check logs.</p></div>";
+    }
+}
+
 function generateContentManagement(): string {
     return "<div class='info-panel'><h3>Content Management</h3><p>Content creation and editing tools would be displayed here.</p></div>";
 }
@@ -401,19 +601,23 @@ function getNavigation(string $role): array {
                 'overview' => ['icon' => '📊', 'label' => 'Overview'],
                 'users' => ['icon' => '👥', 'label' => 'Users'],
                 'security' => ['icon' => '🔒', 'label' => 'Security'],
+                'payments' => ['icon' => '💰', 'label' => 'Payments'],
+                'subscription' => ['icon' => '💳', 'label' => 'Subscription'],
                 'settings' => ['icon' => '⚙️', 'label' => 'Settings']
             ];
         case 'editor':
             return [
                 'content' => ['icon' => '📝', 'label' => 'Content'],
                 'users' => ['icon' => '👤', 'label' => 'Profiles'],
-                'reports' => ['icon' => '📋', 'label' => 'Reports']
+                'reports' => ['icon' => '📋', 'label' => 'Reports'],
+                'subscription' => ['icon' => '💳', 'label' => 'Subscription']
             ];
         case 'user':
         default:
             return [
                 'profile' => ['icon' => '👤', 'label' => 'Profile'],
-                'content' => ['icon' => '�', 'label' => 'Content'],
+                'content' => ['icon' => '📝', 'label' => 'Content'],
+                'subscription' => ['icon' => '💳', 'label' => 'Subscription'],
                 'settings' => ['icon' => '⚙️', 'label' => 'Settings']
             ];
     }

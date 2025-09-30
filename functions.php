@@ -72,6 +72,16 @@ function requireLogin(string $redirectTo = 'login.php'): void {
 }
 
 /**
+ * Alias for requireLogin() - require user authentication
+ * 
+ * @param string $redirectTo Page to redirect to if not logged in
+ * @return void
+ */
+function requireAuth(string $redirectTo = 'login.php'): void {
+    requireLogin($redirectTo);
+}
+
+/**
  * Check if user is currently logged in with valid session
  * 
  * @return bool True if logged in
@@ -82,6 +92,27 @@ function isLoggedIn(): bool {
     }
     
     return validateSessionInDatabase($_SESSION['user_id'], $_SESSION['session_id']);
+}
+
+/**
+ * Get current logged in user information
+ * 
+ * @return array|null User data or null if not logged in
+ */
+function getCurrentUser(): ?array {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    
+    try {
+        $pdo = getDbConnection();
+        $stmt = $pdo->prepare('SELECT id, username, email, role, first_name, last_name, stripe_customer_id, created_at, last_active FROM users WHERE id = ?');
+        $stmt->execute([$_SESSION['user_id']]);
+        return $stmt->fetch();
+    } catch (Exception $e) {
+        error_log('Failed to get current user: ' . $e->getMessage());
+        return null;
+    }
 }
 
 /**

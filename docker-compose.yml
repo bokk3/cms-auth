@@ -7,10 +7,10 @@ services:
     container_name: cms-auth-db
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: rootpassword
-      MARIADB_DATABASE: login_system
-      MARIADB_USER: app_user
-      MARIADB_PASSWORD: app_password
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-secure_root_pass}
+      MARIADB_DATABASE: ${DB_NAME:-login_system}
+      MARIADB_USER: ${DB_USER:-app_user}
+      MARIADB_PASSWORD: ${DB_PASS:-secure_app_pass}
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -37,11 +37,11 @@ services:
         condition: service_healthy
     environment:
       DB_HOST: mariadb
-      DB_NAME: login_system
-      DB_USER: app_user
-      DB_PASS: app_password
+      DB_NAME: ${DB_NAME:-login_system}
+      DB_USER: ${DB_USER:-app_user}
+      DB_PASS: ${DB_PASS:-secure_app_pass}
     volumes:
-      - .:/var/www/html:ro
+      - .:/var/www/html
       - apache_logs:/var/log/apache2
     ports:
       - "8083:80"   # Different port for web access
@@ -64,7 +64,7 @@ services:
       PMA_HOST: mariadb
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: rootpassword
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-secure_root_pass}
       UPLOAD_LIMIT: 100M
     ports:
       - "8084:80"   # PHPMyAdmin access
@@ -76,7 +76,7 @@ services:
     image: redis:7.2-alpine
     container_name: cms-auth-redis
     restart: unless-stopped
-    command: redis-server --requirepass redis_password
+    command: redis-server --requirepass ${REDIS_PASSWORD:-secure_redis_pass}
     volumes:
       - redis_data:/data
     ports:

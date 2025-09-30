@@ -110,8 +110,8 @@ show_access_info() {
     echo "   User:   alex_tech / editor123 (Profile only)"
     echo
     print_status "🔧 Database Credentials:"
-    echo "   Root:     root / rootpassword"
-    echo "   App User: app_user / app_password"
+    echo "   Root:     root / \${DB_ROOT_PASSWORD}"
+    echo "   App User: \${DB_USER} / \${DB_PASS}"
     echo "   Database: login_system"
 }
 

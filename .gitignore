@@ -1,0 +1,75 @@
+# Environment variables and sensitive configuration
+.env
+.env.local
+.env.production
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Log files
+*.log
+logs/
+error.log
+access.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker volumes and data
+docker-data/
+volumes/
+
+# Backup files
+*.backup
+*.bak
+
+# Session files
+tmp/
+sessions/
+
+# Uploaded files (if any)
+uploads/
+files/
+
+# Composer dependencies - NEVER commit these!
+vendor/
+# Note: composer.lock should usually be committed for production projects
+# but can be excluded for development/library projects
+
+# Node modules (if any)
+node_modules/
+
+# Cache files
+cache/
+.cache/
+
+# Build outputs
+dist/
+build/
+
+# Test files and coverage
+coverage/
+*.coverage
+phpunit.xml
+
+# Stripe webhook endpoint logs
+webhook-logs/
+
+# Cookie files from testing
+cookies.txt
+
+# Debug files
+debug_*.php
+test_*.php

@@ -4,10 +4,17 @@
  * Handles subscriptions, one-time payments, and billing management
  */
 
+// Prevent multiple inclusions
+if (function_exists('getOrCreateStripeCustomer')) {
+    return;
+}
+
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/db.php';
 
 use Stripe\Stripe;
 use Stripe\Checkout\Session as CheckoutSession;
+use Stripe\BillingPortal\Session as BillingPortalSession;
 use Stripe\Customer;
 use Stripe\Subscription;
 use Stripe\PaymentIntent;
@@ -505,5 +512,55 @@ function getBillingPeriodText(string $period): string {
         default:
             return $period;
     }
+}
+
+/**
+ * Create Stripe billing portal session for subscription management
+ * 
+ * @param int $userId User ID
+ * @param array $options Portal options
+ * @return string Portal URL
+ * @throws Exception If portal creation fails
+ */
+function createBillingPortalSession(int $userId, array $options = []): string {
+    try {
+        $pdo = getDbConnection();
+        
+        // Get user data
+        $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        
+        if (!$user || !$user['stripe_customer_id']) {
+            throw new Exception('User not found or no Stripe customer');
+        }
+        
+        $returnUrl = $options['return_url'] ?? getBaseUrl() . '/admin.php';
+        
+        // Create billing portal session
+        $session = BillingPortalSession::create([
+            'customer' => $user['stripe_customer_id'],
+            'return_url' => $returnUrl,
+        ]);
+        
+        return $session->url;
+        
+    } catch (Exception $e) {
+        error_log('Failed to create billing portal session: ' . $e->getMessage());
+        throw new Exception('Failed to create billing portal session');
+    }
+}
+
+/**
+ * Get base URL for redirects
+ * 
+ * @return string Base URL
+ */
+function getBaseUrl(): string {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $path = dirname($_SERVER['SCRIPT_NAME']);
+    $path = $path === '/' ? '' : $path;
+    return $protocol . '://' . $host . $path;
 }
 ?>

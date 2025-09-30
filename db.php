@@ -20,7 +20,7 @@ if (file_exists(__DIR__ . '/.env')) {
 define('DB_HOST', $_ENV['DB_HOST'] ?? 'mariadb');
 define('DB_NAME', $_ENV['DB_NAME'] ?? 'login_system');
 define('DB_USER', $_ENV['DB_USER'] ?? 'app_user');
-define('DB_PASS', $_ENV['DB_PASS'] ?? 'app_password');
+define('DB_PASS', $_ENV['DB_PASS'] ?? 'secure_app_pass');
 define('DB_CHARSET', 'utf8mb4');
 
 // Session configuration
